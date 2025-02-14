@@ -16,7 +16,8 @@ Weather App é um aplicativo desenvolvido em Python utilizando a biblioteca PyQt
 
 ## Captura de Tela
 
-<img width="604" alt="Screenshot 2025-02-14 at 8 07 38 PM" src="https://github.com/user-attachments/assets/69a31a5f-4161-4ee1-9067-25941da362ff" />
+<img width="640" alt="Screenshot 2025-02-14 at 8 05 00 PM" src="https://github.com/user-attachments/assets/682fffda-f008-4875-b6f5-1dd074b1e065" />
+
 
 ## Possíveis Melhorias
 - Adicionar suporte para previsão de múltiplos dias.
