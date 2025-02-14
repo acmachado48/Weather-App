@@ -2,7 +2,10 @@ import sys
 import requests
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout
 from PyQt5.QtCore import Qt
-
+from PyQt5.QtWidgets import QHBoxLayout 
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PyQt5.QtCore import QUrl
 
 class WeatherApp(QWidget):  # WeatherApp herda de QWidget
     def __init__(self):  # Construtor
@@ -13,8 +16,12 @@ class WeatherApp(QWidget):  # WeatherApp herda de QWidget
         self.city_input = QLineEdit(self)
         self.get_weather_button = QPushButton("Get Weather", self)
         self.temperature_label = QLabel("", self)
-        self.emoji_label = QLabel(self)
+        self.weather_icon = QLabel(self)
         self.description_label = QLabel(self)
+
+         # Gerenciador de rede para baixar imagem
+        self.network_manager = QNetworkAccessManager()
+        self.network_manager.finished.connect(self.set_weather_icon)
 
         # Inicializa a UI
         self.initUI()
@@ -29,7 +36,15 @@ class WeatherApp(QWidget):  # WeatherApp herda de QWidget
         vbox.addWidget(self.city_input)
         vbox.addWidget(self.get_weather_button)
         vbox.addWidget(self.temperature_label)
-        vbox.addWidget(self.emoji_label)
+
+        # Crie um QHBoxLayout para centralizar o ícone
+        icon_layout = QHBoxLayout()
+        icon_layout.addStretch()  # Adiciona espaço à esquerda
+        icon_layout.addWidget(self.weather_icon)  # Adiciona o ícone
+        icon_layout.addStretch()  # Adiciona espaço à direita
+        icon_layout.setAlignment(Qt.AlignCenter)  # Centraliza o ícone
+
+        vbox.addLayout(icon_layout)  # Adiciona o QHBoxLayout ao QVBoxLayout principal
         vbox.addWidget(self.description_label)
 
         self.setLayout(vbox)
@@ -37,43 +52,53 @@ class WeatherApp(QWidget):  # WeatherApp herda de QWidget
         self.city_label.setAlignment(Qt.AlignCenter)
         self.city_input.setAlignment(Qt.AlignCenter)
         self.temperature_label.setAlignment(Qt.AlignCenter)
-        self.emoji_label.setAlignment(Qt.AlignCenter)
+        self.weather_icon.setAlignment(Qt.AlignCenter)
         self.description_label.setAlignment(Qt.AlignCenter)
 
         self.city_label.setObjectName("city_label")
         self.city_input.setObjectName("city_input")
         self.get_weather_button.setObjectName("get_weather_button")
         self.temperature_label.setObjectName("temperature_label")
-        self.emoji_label.setObjectName("emoji_label")
         self.description_label.setObjectName("description_label")
 
         # Aplica CSS (PyQt StyleSheet)
         self.setStyleSheet("""
-            QLabel, QPushButton {
-                font-family: Calibri;
-            }
-            QLabel#city_label {
-                font-size: 24px;
-                font-style: italic;
-            }
-            QLineEdit#city_input {
-                font-size: 18px;
-            }
-            QPushButton#get_weather_button {
-                font-size: 18px;
-                font-weight: bold;
-            }
-            QLabel#temperature_label{
-                font-size: 75px;
-            }
-            QLabel#emoji_label{
-                font-size: 100px;
-                font-family: Apple Color Emoji;  
-            }         
-            QLabel#description_label{
-                 font-size: 50px;  
-            }     
-        """)
+    QWidget {
+        background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, 
+                    stop:0 #0F2027, stop:0.5 #203A43, stop:1 #2C5364);
+        color: white;
+    }
+    QLabel, QPushButton {
+        font-family: Calibri;
+    }
+    QLabel#city_label {
+        font-size: 24px;
+        font-style: italic;
+    }
+    QLineEdit#city_input {
+        font-size: 18px;
+        border: 2px solid white;
+        border-radius: 10px;
+        padding: 5px;
+        color: white;
+        background: rgba(255, 255, 255, 0.2);
+    }
+    QPushButton#get_weather_button {
+        font-size: 18px;
+        font-weight: bold;
+        background-color: #3498db;
+        color: white;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    QLabel#temperature_label {
+        font-size: 75px;
+        font-weight: bold;
+    }
+    QLabel#description_label {
+        font-size: 35px;
+    }
+""")
 
         self.get_weather_button.clicked.connect(self.get_weather)
 
@@ -121,9 +146,9 @@ class WeatherApp(QWidget):  # WeatherApp herda de QWidget
             self.display_error(f"Request Error:\n{req_error}")
 
     def display_error(self, message):
-        self.temperature_label.setStyleSheet("font-size: 30px;")
-        self.temperature_label.setText(message)
-        self.emoji_label.clear()
+        self.temperature_label.setStyleSheet("font-size: 30px; color: #FF4C4C;")
+        self.temperature_label.setText("⚠ " + message)
+        self.weather_icon.clear()
         self.description_label.clear()
 
     def display_weather(self, data):
@@ -133,39 +158,31 @@ class WeatherApp(QWidget):  # WeatherApp herda de QWidget
         temperature_f = (temperature_k * 9/5) - 459.67
         weather_id = data["weather"][0]["id"]
         weather_description = data["weather"][0]["description"]
+        icon_code = data["weather"][0]["icon"]  # Código do ícone (ex: "10d")
 
-        self.temperature_label.setText(f"{temperature_f:.0f}°F")
-        self.emoji_label.setText(self.get_weather_emoji(weather_id))
+        self.city_label.setText(f"Weather in {data['name']}:")
+
+        self.temperature_label.setText(f"{temperature_c:.0f}°C")
         self.description_label.setText(weather_description)
 
-    @staticmethod
-    def get_weather_emoji(weather_id):
-        if 200 <= weather_id <= 232:
-            return "⛈"
-        elif 300 <= weather_id <= 321:
-            return "🌦"
-        elif 500 <= weather_id <= 531:
-            return "🌧"
-        elif 600 <= weather_id <= 622:
-            return "❄"
-        elif 701 <= weather_id <= 741:
-            return "🌫"
-        elif weather_id == 762:
-            return "🌋"
-        elif weather_id == 771:
-            return "💨"
-        elif weather_id == 781:
-            return "🌪"
-        elif weather_id == 800:
-            return "☀"
-        elif 801 <= weather_id <= 804:
-            return "☁"
-        else:
-            return ""
+        # URL do ícone da OpenWeatherMap
+        icon_url = f"http://openweathermap.org/img/wn/{icon_code}@2x.png"
+        self.load_weather_icon(icon_url)  # Carregar a imagem
 
+    def load_weather_icon(self, url):
+       request = QNetworkRequest(QUrl(url))
+       self.network_manager.get(request)
+
+    def set_weather_icon(self, reply):
+       pixmap = QPixmap()
+       pixmap.loadFromData(reply.readAll())
+       if not pixmap.isNull():
+        self.weather_icon.setPixmap(pixmap)
+        self.weather_icon.setFixedSize(100, 100) 
+        self.weather_icon.setScaledContents(False)  
 
 if __name__ == "__main__": 
     app = QApplication(sys.argv)        
     weather_app = WeatherApp()
     weather_app.show()
-    sys.exit(app.exec_())  
+    sys.exit(app.exec_())
